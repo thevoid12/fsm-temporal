@@ -9,6 +9,17 @@ from pydantic import BaseModel
 
 
 # ==============================================================================
+# Constants
+# ==============================================================================
+
+WORKFLOW_NAME = "FSMWorkflow"
+SIGNAL_NAME = "transition"
+QUERY_CURRENT_STATE = "current_state"
+QUERY_AVAILABLE_TRANSITIONS = "available_transitions"
+QUERY_AUDIT_TRAIL = "audit_trail"
+
+
+# ==============================================================================
 # Enums
 # ==============================================================================
 
