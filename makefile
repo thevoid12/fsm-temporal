@@ -6,3 +6,6 @@ dev-setup:
 dev:
 	source env/bin/activate
 	python3 worker.py
+
+mock:
+	uv run python -m uvicorn mock_environment.main:app --port 9999

@@ -1,0 +1,12 @@
+{
+  "temporal": {
+    "host": "localhost",
+    "port": 7233,
+    "ui_port": 8080,
+    "task_queue": "fsm-task-queue"
+  },
+  "mock_server": {
+    "host": "localhost",
+    "port": 9999
+  }
+}
