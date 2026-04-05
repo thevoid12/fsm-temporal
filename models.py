@@ -1,6 +1,21 @@
+"""Pydantic models for the FSM engine.
+Defines the schema for workflow definitions, states, transitions,
+task callback I/O, and structured logging contexts.
+"""
+
 from enum import StrEnum
 
 from pydantic import BaseModel
+
+
+class HttpMethod(StrEnum):
+    """Supported HTTP methods for task callbacks."""
+
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
 
 
 class ConditionOperator(StrEnum):
@@ -42,6 +57,7 @@ class StateDefinition(BaseModel):
     is_start: bool = False
     is_end: bool = False
     task_callback_url: str | None = None
+    task_http_method: HttpMethod = HttpMethod.POST
     task_timeout_minutes: int = 5
     max_retries: int = 0
     retry_interval_seconds: int = 10
@@ -102,12 +118,42 @@ class WorkflowDefinition(BaseModel):
         raise KeyError(f"Transition '{transition_id}' not found")
 
 
+class TaskCallbackRequestBody(BaseModel):
+    """JSON body sent to the task callback endpoint."""
+
+    state_id: str
+    workflow_id: str
+
+
+class TaskCallbackHttpRequest(BaseModel):
+    """Structured HTTP request kwargs for the task callback call."""
+
+    json: dict | None = None
+    params: dict | None = None
+
+    def to_httpx_kwargs(self) -> dict:
+        """Convert to httpx request kwargs, excluding None fields."""
+        return self.model_dump(exclude_none=True)
+
+
 class TaskCallbackInput(BaseModel):
     """Input payload sent to the HTTP callback activity."""
 
     callback_url: str
+    http_method: HttpMethod
     state_id: str
     workflow_id: str
+
+
+class TaskCallbackLogContext(BaseModel):
+    """Structured log context for task callback activity."""
+
+    callback_url: str
+    state_id: str
+    workflow_id: str
+    status_code: int | None = None
+    error: str | None = None
+    body: str | None = None
 
 
 class TaskCallbackResult(BaseModel):
