@@ -31,9 +31,9 @@ async def execute_task_callback(input: TaskCallbackInput) -> TaskCallbackResult:
     # For GET and DELETE: there's no request body, so the data goes as query parameters in the URL (params=),
     # e.g. ?state_id=state-1&workflow_id=abc.
     if input.http_method in METHODS_WITH_BODY:
-        http_request = TaskCallbackHttpRequest(json=body_data)
+        http_request = TaskCallbackHttpRequest(json_body=body_data)
     else:
-        http_request = TaskCallbackHttpRequest(params=body_data)
+        http_request = TaskCallbackHttpRequest(query_params=body_data)
 
     log_ctx = TaskCallbackLogContext(
         callback_url=input.callback_url,

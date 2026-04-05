@@ -8,6 +8,11 @@ from enum import StrEnum
 from pydantic import BaseModel
 
 
+# ==============================================================================
+# Enums
+# ==============================================================================
+
+
 class HttpMethod(StrEnum):
     """Supported HTTP methods for task callbacks."""
 
@@ -24,6 +29,11 @@ class ConditionOperator(StrEnum):
     EQUALS = "equals"
     NOT_EQUALS = "not_equals"
     CONTAINS = "contains"
+
+
+# ==============================================================================
+# Workflow Definition Models (JSON schema)
+# ==============================================================================
 
 
 class TransitionCondition(BaseModel):
@@ -118,6 +128,11 @@ class WorkflowDefinition(BaseModel):
         raise KeyError(f"Transition '{transition_id}' not found")
 
 
+# ==============================================================================
+# Task Callback Models (Activity I/O)
+# ==============================================================================
+
+
 class TaskCallbackRequestBody(BaseModel):
     """JSON body sent to the task callback endpoint."""
 
@@ -128,12 +143,17 @@ class TaskCallbackRequestBody(BaseModel):
 class TaskCallbackHttpRequest(BaseModel):
     """Structured HTTP request kwargs for the task callback call."""
 
-    json: dict | None = None
-    params: dict | None = None
+    json_body: dict | None = None
+    query_params: dict | None = None
 
     def to_httpx_kwargs(self) -> dict:
-        """Convert to httpx request kwargs, excluding None fields."""
-        return self.model_dump(exclude_none=True)
+        """Convert to httpx-compatible request kwargs, excluding None fields."""
+        kwargs = {}
+        if self.json_body is not None:
+            kwargs["json"] = self.json_body
+        if self.query_params is not None:
+            kwargs["params"] = self.query_params
+        return kwargs
 
 
 class TaskCallbackInput(BaseModel):
@@ -143,6 +163,56 @@ class TaskCallbackInput(BaseModel):
     http_method: HttpMethod
     state_id: str
     workflow_id: str
+
+
+class TaskCallbackResult(BaseModel):
+    """Result returned from the HTTP callback activity."""
+
+    success: bool
+    status_code: int
+    body: str
+
+
+# ==============================================================================
+# Workflow Query/Response Models
+# ==============================================================================
+
+
+class AuditEntry(BaseModel):
+    """Records a single state transition in the workflow history."""
+
+    timestamp: str
+    from_state: str | None
+    to_state: str
+    transition_id: str | None
+    task_result: str | None = None
+
+
+class FSMWorkflowResult(BaseModel):
+    """Final output returned when the FSM workflow completes."""
+
+    final_state: str
+    audit_trail: list[AuditEntry]
+
+
+class CurrentStateResponse(BaseModel):
+    """Response for the current_state query."""
+
+    state_id: str | None
+    display_label: str | None
+
+
+class AvailableTransitionResponse(BaseModel):
+    """Single transition entry in the available_transitions query response."""
+
+    transition_id: str
+    display_label: str
+    target_state: str
+
+
+# ==============================================================================
+# Structured Log Context Models
+# ==============================================================================
 
 
 class TaskCallbackLogContext(BaseModel):
@@ -156,19 +226,23 @@ class TaskCallbackLogContext(BaseModel):
     body: str | None = None
 
 
-class TaskCallbackResult(BaseModel):
-    """Result returned from the HTTP callback activity."""
+class StateEntryLogContext(BaseModel):
+    """Structured log context when entering a state."""
 
-    success: bool
-    status_code: int
-    body: str
+    state_id: str
+    display_label: str
 
 
-class AuditEntry(BaseModel):
-    """Records a single state transition in the workflow history."""
+class AutoTransitionLogContext(BaseModel):
+    """Structured log context when an auto-transition fires."""
 
-    timestamp: str
-    from_state: str | None
-    to_state: str
-    transition_id: str | None
-    task_result: str | None = None
+    transition_id: str
+    target_state: str
+
+
+class InvalidTransitionLogContext(BaseModel):
+    """Structured log context when a transition is rejected as invalid."""
+
+    transition_id: str
+    current_state: str | None
+    expected_source: str
