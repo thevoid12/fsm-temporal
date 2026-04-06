@@ -4,12 +4,16 @@ Supports starting workflows, sending transition signals, and querying workflow s
 
 import asyncio
 import json
+import logging
 import sys
 import uuid
 
 from temporalio.client import Client
+from temporalio.contrib.pydantic import pydantic_data_converter
 
 from config import load_config
+
+logger = logging.getLogger(__name__)
 from models import (
     QUERY_AUDIT_TRAIL,
     QUERY_AVAILABLE_TRANSITIONS,
@@ -24,7 +28,8 @@ async def start_workflow(client: Client, task_queue: str, json_path: str) -> str
     with open(json_path) as f:
         workflow_def = json.load(f)
 
-    workflow_id = f"fsm-{workflow_def.get('name', 'unnamed')}-{uuid.uuid4().hex[:8]}"
+    sanitized_name = workflow_def.get("name", "unnamed").replace(" ", "-").lower()
+    workflow_id = f"fsm-{sanitized_name}-{uuid.uuid4().hex[:8]}"
     handle = await client.start_workflow(
         WORKFLOW_NAME,
         workflow_def,
@@ -36,8 +41,20 @@ async def start_workflow(client: Client, task_queue: str, json_path: str) -> str
 
 
 async def send_transition(client: Client, workflow_id: str, transition_id: str) -> None:
-    """Send a transition signal to a running workflow."""
+    """Validate the transition ID against available transitions, then send the signal."""
     handle = client.get_workflow_handle(workflow_id)
+    available = await handle.query(QUERY_AVAILABLE_TRANSITIONS)
+    valid_ids = [t["transition_id"] for t in available]
+
+    if transition_id not in valid_ids:
+        logger.error(
+            "Invalid transition attempted",
+            extra={"transition_id": transition_id, "available_transitions": valid_ids, "workflow_id": workflow_id},
+        )
+        print(f"Error: '{transition_id}' is not a valid transition from the current state.")
+        print(f"Available transitions: {valid_ids}")
+        return
+
     await handle.signal(SIGNAL_NAME, transition_id)
     print(f"Sent transition: {transition_id}")
 
@@ -76,7 +93,10 @@ def print_usage() -> None:
 async def run() -> None:
     """Parse CLI args and dispatch to the appropriate command."""
     config = load_config()
-    client = await Client.connect(config.temporal.server_address)
+    client = await Client.connect(
+        config.temporal.server_address,
+        data_converter=pydantic_data_converter,
+    )
 
     command = sys.argv[1] if len(sys.argv) > 1 else "help"
 

@@ -3,12 +3,16 @@ Connects to Temporal server and registers the FSM workflow and task callback act
 """
 
 import asyncio
+import logging
 
 from temporalio import workflow
 from temporalio.client import Client
+from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.worker import Worker
 
 from config import load_config
+
+logger = logging.getLogger(__name__)
 
 with workflow.unsafe.imports_passed_through():
     from activities import execute_task_callback
@@ -19,14 +23,17 @@ async def main() -> None:
     """Start the FSM worker and listen for tasks."""
     config = load_config()
 
-    client = await Client.connect(config.temporal.server_address)
+    client = await Client.connect(
+        config.temporal.server_address,
+        data_converter=pydantic_data_converter,
+    )
     worker = Worker(
         client,
         task_queue=config.temporal.task_queue,
         workflows=[FSMWorkflow],
         activities=[execute_task_callback],
     )
-    workflow.logger.info(
+    logger.info(
         "FSM Worker started",
         extra={"task_queue": config.temporal.task_queue, "server": config.temporal.server_address},
     )

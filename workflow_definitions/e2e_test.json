@@ -1,0 +1,77 @@
+{
+  "name": "E2E Test Workflow",
+  "description": "End-to-end test workflow exercising instant success, slow response, retry recovery, manual-only, and terminal states",
+  "states": [
+    {
+      "unique_identifier": "state-1",
+      "display_label": "Draft",
+      "description": "Initial state - validates via instant-success endpoint",
+      "is_start": true,
+      "task_callback_url": "http://localhost:9999/task/instant-success",
+      "task_timeout_minutes": 5,
+      "max_retries": 1,
+      "retry_interval_seconds": 10
+    },
+    {
+      "unique_identifier": "state-2",
+      "display_label": "In Review",
+      "description": "Review state - uses slow-success endpoint (15s delay)",
+      "task_callback_url": "http://localhost:9999/task/slow-success",
+      "task_timeout_minutes": 5,
+      "max_retries": 0,
+      "retry_interval_seconds": 10
+    },
+    {
+      "unique_identifier": "state-3",
+      "display_label": "Retry Check",
+      "description": "Tests retry logic - fails first attempt, succeeds on second",
+      "task_callback_url": "http://localhost:9999/task/fail-then-succeed",
+      "task_timeout_minutes": 5,
+      "max_retries": 2,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "state-4",
+      "display_label": "Approved",
+      "description": "No task - manual transition only"
+    },
+    {
+      "unique_identifier": "state-5",
+      "display_label": "Closed",
+      "description": "Terminal state",
+      "is_end": true
+    }
+  ],
+  "transitions": [
+    {
+      "unique_identifier": "submit",
+      "display_label": "Submit for Review",
+      "source_state": "state-1",
+      "target_state": "state-2"
+    },
+    {
+      "unique_identifier": "pass_review",
+      "display_label": "Pass Review",
+      "source_state": "state-2",
+      "target_state": "state-3"
+    },
+    {
+      "unique_identifier": "reject",
+      "display_label": "Reject",
+      "source_state": "state-2",
+      "target_state": "state-1"
+    },
+    {
+      "unique_identifier": "approve",
+      "display_label": "Approve",
+      "source_state": "state-3",
+      "target_state": "state-4"
+    },
+    {
+      "unique_identifier": "close",
+      "display_label": "Close",
+      "source_state": "state-4",
+      "target_state": "state-5"
+    }
+  ]
+}

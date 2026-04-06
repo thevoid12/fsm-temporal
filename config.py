@@ -31,11 +31,18 @@ class MockServerConfig(BaseModel):
     port: int
 
 
+class HttpClientConfig(BaseModel):
+    """HTTP client settings for task callback activities."""
+
+    timeout_seconds: int = 300
+
+
 class AppConfig(BaseModel):
     """Top-level application configuration."""
 
     temporal: TemporalConfig
     mock_server: MockServerConfig
+    http_client: HttpClientConfig = HttpClientConfig()
 
 
 def load_config() -> AppConfig:

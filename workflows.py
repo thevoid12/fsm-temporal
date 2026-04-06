@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
 
 with workflow.unsafe.imports_passed_through():
     from activities import execute_task_callback
@@ -38,11 +39,11 @@ class FSMWorkflow:
 
     @workflow.run
     async def run(self, workflow_def_dict: dict) -> dict:
-        """Run is the main entry point. Execute the FSM from start state to end state."""
+        """Run the FSM from start state to end state. Tasks execute on exit from a state."""
         self._definition = WorkflowDefinition.model_validate(workflow_def_dict)
 
         start_state = self._definition.get_start_state()
-        await self._enter_state(start_state.unique_identifier, transition_id=None)
+        self._enter_state(start_state.unique_identifier, transition_id=None)
 
         while not self._completed:
             await workflow.wait_condition(lambda: len(self._transition_queue) > 0)
@@ -62,7 +63,19 @@ class FSMWorkflow:
                 )
                 continue
 
-            await self._enter_state(transition.target_state, transition_id=transition_id)
+            try:
+                task_result = await self._execute_exit_task()
+            except ActivityError as e:
+                workflow.logger.error(
+                    "Exit task failed, staying in current state",
+                    extra={"state_id": self._current_state_id, "transition_id": transition_id, "error": str(e)},
+                )
+                continue
+
+            target_state = self._resolve_target_state(
+                transition.target_state, transition_id, task_result
+            )
+            self._enter_state(target_state, transition_id=transition_id, task_result=task_result)
 
         result = FSMWorkflowResult(
             final_state=self._current_state_id,
@@ -70,9 +83,10 @@ class FSMWorkflow:
         )
         return result.model_dump()
 
-    
-    async def _enter_state(self, state_id: str, transition_id: str | None) -> None:
-        """Enter a state, execute its task callback if defined, and check for auto-transitions."""
+    def _enter_state(
+        self, state_id: str, transition_id: str | None, task_result: TaskCallbackResult | None = None
+    ) -> None:
+        """Set the current state and record an audit entry. No task execution happens here."""
         previous_state = self._current_state_id
         self._current_state_id = state_id
         state_def = self._definition.get_state(state_id)
@@ -81,32 +95,10 @@ class FSMWorkflow:
             state_id=state_id,
             display_label=state_def.display_label,
         )
-        # using inbuilt temporol logging. this gives a lot of advantages
-        workflow.logger.info("Entering state", extra=log_ctx.model_dump()) 
-
-        task_result: TaskCallbackResult | None = None
-
-        if state_def.task_callback_url:
-            activity_input = TaskCallbackInput(
-                callback_url=state_def.task_callback_url,
-                http_method=state_def.task_http_method,
-                state_id=state_id,
-                workflow_id=workflow.info().workflow_id,
-            )
-            
-            task_result = await workflow.execute_activity(
-                execute_task_callback,
-                activity_input,
-                schedule_to_close_timeout=timedelta(minutes=state_def.task_timeout_minutes),
-                retry_policy=RetryPolicy(
-                    initial_interval=timedelta(seconds=state_def.retry_interval_seconds),
-                    maximum_attempts=state_def.max_retries + 1,
-                    backoff_coefficient=2.0, # exponential backoff
-                ),
-            )
+        workflow.logger.info("Entering state", extra=log_ctx.model_dump())
 
         audit_entry = AuditEntry(
-            timestamp=workflow.now().isoformat(), # deterministic, replay-safe timestamp
+            timestamp=workflow.now().isoformat(),
             from_state=previous_state,
             to_state=state_id,
             transition_id=transition_id,
@@ -116,27 +108,55 @@ class FSMWorkflow:
 
         if state_def.is_end:
             self._completed = True
-            return
 
-        if task_result:
-            try:
-                task_body = json.loads(task_result.body)
-            except (json.JSONDecodeError, TypeError):
-                task_body = {}
+    async def _execute_exit_task(self) -> TaskCallbackResult | None:
+        """Run the current state's task callback before leaving it."""
+        state_def = self._definition.get_state(self._current_state_id)
+        if not state_def.task_callback_url:
+            return None
 
-            auto_transition = self._definition.find_auto_transition(
-                state_id, task_result.success, task_body
+        activity_input = TaskCallbackInput(
+            callback_url=state_def.task_callback_url,
+            http_method=state_def.task_http_method,
+            state_id=self._current_state_id,
+            workflow_id=workflow.info().workflow_id,
+        )
+
+        return await workflow.execute_activity(
+            execute_task_callback,
+            activity_input,
+            schedule_to_close_timeout=timedelta(minutes=state_def.task_timeout_minutes),
+            retry_policy=RetryPolicy(
+                initial_interval=timedelta(seconds=state_def.retry_interval_seconds),
+                maximum_attempts=state_def.max_retries + 1,
+                backoff_coefficient=2.0,
+            ),
+        )
+
+    def _resolve_target_state(
+        self, default_target: str, transition_id: str, task_result: TaskCallbackResult | None
+    ) -> str:
+        """Check if an auto-transition overrides the default target based on the task result."""
+        if not task_result:
+            return default_target
+
+        try:
+            task_body = json.loads(task_result.body)
+        except (json.JSONDecodeError, TypeError):
+            task_body = {}
+
+        auto_transition = self._definition.find_auto_transition(
+            self._current_state_id, task_result.success, task_body
+        )
+        if auto_transition:
+            auto_log = AutoTransitionLogContext(
+                transition_id=auto_transition.unique_identifier,
+                target_state=auto_transition.target_state,
             )
-            if auto_transition: #Doubt
-                auto_log = AutoTransitionLogContext(
-                    transition_id=auto_transition.unique_identifier,
-                    target_state=auto_transition.target_state,
-                )
-                workflow.logger.info("Auto-transitioning", extra=auto_log.model_dump())
-                await self._enter_state(
-                    auto_transition.target_state,
-                    transition_id=auto_transition.unique_identifier,
-                )
+            workflow.logger.info("Auto-transition override", extra=auto_log.model_dump())
+            return auto_transition.target_state
+
+        return default_target
 
     @workflow.signal
     async def transition(self, transition_id: str) -> None:

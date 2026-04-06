@@ -5,6 +5,7 @@ Handles HTTP calls to task callback endpoints defined in the workflow JSON.
 import httpx
 from temporalio import activity
 
+from config import load_config
 from models import (
     HttpMethod,
     TaskCallbackHttpRequest,
@@ -43,8 +44,9 @@ async def execute_task_callback(input: TaskCallbackInput) -> TaskCallbackResult:
 
     logger.info("Executing task callback", extra=log_ctx.model_dump(exclude_none=True))
 
+    config = load_config()
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(config.http_client.timeout_seconds)) as client:
             response = await client.request(
                 input.http_method.value,
                 input.callback_url,
