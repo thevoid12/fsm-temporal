@@ -20,13 +20,9 @@ call_counts: dict[str, int] = {}
 
 
 class TaskPayload(BaseModel):
-    """Incoming payload from the adapter."""
-    entity_id: str
-    workflow_id: str
+    """Incoming payload from the FSM activity."""
     state_id: str
-    state_identifier: str
-    attempt_number: int
-    tenant_id: str
+    workflow_id: str
 
 
 @app.post("/task/instant-success")
@@ -61,7 +57,7 @@ async def timeout_endpoint(payload: TaskPayload):
 @app.post("/task/fail-then-succeed")
 async def fail_then_succeed(payload: TaskPayload):
     """Returns 500 on first call, 200 on second. Tests retry recovery."""
-    key = payload.entity_id
+    key = f"{payload.workflow_id}:{payload.state_id}"
     call_counts[key] = call_counts.get(key, 0) + 1
 
     if call_counts[key] <= 1:
