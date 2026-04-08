@@ -37,12 +37,21 @@ class HttpClientConfig(BaseModel):
     timeout_seconds: int = 300
 
 
+class ApiServerConfig(BaseModel):
+    """API server settings for the UI bridge."""
+
+    host: str = "0.0.0.0"
+    port: int = 8000
+    workflow_definitions_dir: str = "workflow_definitions"
+
+
 class AppConfig(BaseModel):
     """Top-level application configuration."""
 
     temporal: TemporalConfig
     mock_server: MockServerConfig
     http_client: HttpClientConfig = HttpClientConfig()
+    api_server: ApiServerConfig = ApiServerConfig()
 
 
 def load_config() -> AppConfig:

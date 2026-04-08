@@ -1,14 +1,34 @@
 PYTHON = env/bin/python
 
-.PHONY: dev-setup dev mock worker start transition state transitions audit
+.PHONY: up dev-setup dev mock worker api ui start transition state transitions audit
+
+down:
+	@echo "Stopping existing processes..."
+	@-lsof -ti :7233 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti :8080 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti :9999 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti :8000 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+	@sleep 1
+
+up: down
+	@echo "Starting Temporal, mock server, worker, API server, and UI..."
+	temporal server start-dev --ui-port 8080 & \
+	sleep 2 && \
+	$(PYTHON) -m uvicorn mock_environment.main:app --port 9999 & \
+	$(PYTHON) worker.py & \
+	$(PYTHON) -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload & \
+	cd ui && bun dev & \
+	wait
 
 dev-setup:
 	temporal server start-dev --ui-port 8080
 
 dev:
-	@echo "Starting mock server and worker..."
+	@echo "Starting mock server, worker, and API server..."
 	$(PYTHON) -m uvicorn mock_environment.main:app --port 9999 & \
 	$(PYTHON) worker.py & \
+	$(PYTHON) -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload & \
 	wait
 
 mock:
@@ -16,6 +36,9 @@ mock:
 
 worker:
 	$(PYTHON) worker.py
+
+api:
+	$(PYTHON) -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
 
 start:
 	$(PYTHON) main.py start workflow_definitions/e2e_test.json

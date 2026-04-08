@@ -1,0 +1,75 @@
+{
+  "name": "testing",
+  "description": "",
+  "states": [
+    {
+      "unique_identifier": "state-1",
+      "display_label": "State 1",
+      "is_start": true,
+      "is_end": false,
+      "metadata": {
+        "x": 221,
+        "y": 301
+      },
+      "task_timeout_minutes": 5,
+      "max_retries": 0,
+      "retry_interval_seconds": 60
+    },
+    {
+      "unique_identifier": "state-2",
+      "display_label": "State 2",
+      "is_start": false,
+      "is_end": false,
+      "metadata": {
+        "x": 520,
+        "y": 304
+      },
+      "task_timeout_minutes": 5,
+      "max_retries": 0,
+      "retry_interval_seconds": 60
+    },
+    {
+      "unique_identifier": "state-3",
+      "display_label": "State 3",
+      "is_start": false,
+      "is_end": false,
+      "metadata": {
+        "x": 523,
+        "y": 458
+      },
+      "task_timeout_minutes": 5,
+      "max_retries": 0,
+      "retry_interval_seconds": 60
+    },
+    {
+      "unique_identifier": "state-4",
+      "display_label": "State 4",
+      "is_start": false,
+      "is_end": true,
+      "metadata": {
+        "x": 237,
+        "y": 454
+      },
+      "task_timeout_minutes": 5,
+      "max_retries": 0,
+      "retry_interval_seconds": 60
+    }
+  ],
+  "transitions": [
+    {
+      "unique_identifier": "state-1_to_state-2",
+      "source_state": "state-1",
+      "target_state": "state-2"
+    },
+    {
+      "unique_identifier": "state-2_to_state-3",
+      "source_state": "state-2",
+      "target_state": "state-3"
+    },
+    {
+      "unique_identifier": "state-4_to_state-3",
+      "source_state": "state-4",
+      "target_state": "state-3"
+    }
+  ]
+}
