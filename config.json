@@ -11,5 +11,10 @@
   },
   "http_client": {
     "timeout_seconds": 300
+  },
+  "api_server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workflow_definitions_dir": "workflow_definitions"
   }
 }

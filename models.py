@@ -257,3 +257,43 @@ class InvalidTransitionLogContext(BaseModel):
     transition_id: str
     current_state: str | None
     expected_source: str
+
+
+# ==============================================================================
+# API Server Models
+# ==============================================================================
+
+
+class TemplateSummary(BaseModel):
+    """Summary of a workflow template for list views."""
+
+    id: str
+    name: str
+    description: str
+
+
+class ValidationCheck(BaseModel):
+    """Result of a single structural validation check."""
+
+    check: str
+    passed: bool
+    details: str | None = None
+
+
+class ValidationResult(BaseModel):
+    """Aggregated result of all validation checks on a template."""
+
+    valid: bool
+    checks: list[ValidationCheck]
+
+
+class StartWorkflowRequest(BaseModel):
+    """Request body for starting a new Temporal workflow from a template."""
+
+    template_id: str
+
+
+class TransitionRequest(BaseModel):
+    """Request body for triggering a transition on a running workflow."""
+
+    transition_id: str
