@@ -239,7 +239,7 @@ export default function EntityRuntimePage() {
               {available.map((t) => (
                 <button key={t.transition_id} onClick={() => triggerTransition(t.transition_id)}
                   className="w-full px-3 py-2 text-xs text-left border border-slate-200 rounded hover:bg-blue-50 hover:border-blue-300">
-                  {t.display_label || t.transition_id}
+                  Execute {currentStateName()} &rarr; {t.display_label || t.transition_id}
                 </button>
               ))}
             </div>

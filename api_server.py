@@ -1,4 +1,4 @@
-"""FastAPI API server bridging the UI to Temporal workflows and filesystem-based templates.
+"""FastAPI API server bridging the custom written workflow configuration UI to Temporal workflows and filesystem-based templates.
 Handles template CRUD on workflow_definitions/ and runtime operations via Temporal client.
 """
 
@@ -40,7 +40,8 @@ temporal_client: Client | None = None
 
 @app.on_event("startup")
 async def startup() -> None:
-    """Connect to Temporal server on app startup."""
+    """Connect to Temporal server on app startup.
+    using fastapi and establishing grpc connection to temporal server"""
     global temporal_client
     temporal_client = await Client.connect(
         config.temporal.server_address,

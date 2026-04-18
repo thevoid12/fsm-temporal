@@ -14,7 +14,9 @@ down:
 up: down
 	@echo "Starting Temporal, mock server, worker, API server, and UI..."
 	temporal server start-dev --ui-port 8080 & \
-	sleep 2 && \
+	echo "Waiting for Temporal server to be ready..." && \
+	until nc -z localhost 7233 2>/dev/null; do sleep 1; done && \
+	echo "Temporal server is ready." && \
 	$(PYTHON) -m uvicorn mock_environment.main:app --port 9999 & \
 	$(PYTHON) worker.py & \
 	$(PYTHON) -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload & \

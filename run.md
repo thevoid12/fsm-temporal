@@ -1,4 +1,4 @@
-# Running the FSM Engine (E2E Test)
+# Running the FSM Engine backend manually (E2E Test)
 
 ## Prerequisites
 

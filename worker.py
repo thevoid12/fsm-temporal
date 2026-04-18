@@ -27,6 +27,18 @@ async def main() -> None:
         config.temporal.server_address,
         data_converter=pydantic_data_converter,
     )
+    # note that you can add few more configuration options here.
+    # workers can be scaled in 2 ways
+    #     1. Vertical (per-worker concurrency)
+    # Tune the max_concurrent_activities, max_concurrent_workflow_tasks, and thread pool size within a single worker process.
+    # 2. Horizontal (more worker processes)
+    # Run multiple worker processes polling the same task queue. Temporal server distributes tasks across all workers on that
+    # queue.
+    # python worker.py &
+    # python worker.py &
+    # python worker.py &
+    # remember workers wont scale automatically by default out of the box by temporal Auto-scaling is not built-in but achievable via KEDA scaler
+    # (Kubernetes) or resource-based tuning (per-worker).
     worker = Worker(
         client,
         task_queue=config.temporal.task_queue,
