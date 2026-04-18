@@ -19,6 +19,7 @@ from models import (
     QUERY_CURRENT_STATE,
     SIGNAL_NAME,
     WORKFLOW_NAME,
+    ConditionOperator,
     StartWorkflowRequest,
     TemplateSummary,
     TransitionRequest,
@@ -271,6 +272,18 @@ async def validate_template(template_id: str) -> ValidationResult:
         check="No duplicate transition identifiers",
         passed=len(dup_transitions) == 0,
         details=f"Duplicates: {dup_transitions}" if dup_transitions else None,
+    ))
+
+    # Check 7: Condition operators are valid
+    valid_operators = set(ConditionOperator)
+    invalid_conditions = []
+    for t in wf.transitions:
+        if t.condition and t.condition.operator not in valid_operators:
+            invalid_conditions.append(f"{t.unique_identifier}: unknown operator '{t.condition.operator}'")
+    checks.append(ValidationCheck(
+        check="Condition operators are valid",
+        passed=len(invalid_conditions) == 0,
+        details="; ".join(invalid_conditions) if invalid_conditions else None,
     ))
 
     all_passed = all(c.passed for c in checks)

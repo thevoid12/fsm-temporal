@@ -65,6 +65,53 @@ async def fail_then_succeed(payload: TaskPayload):
     return {"message": "Succeeded on retry"}
 
 
+# ==============================================================================
+# Conditional transition test endpoints
+# ==============================================================================
+
+
+@app.post("/task/return-approved")
+async def return_approved(payload: TaskPayload):
+    """Returns 200 with status=approved. Tests equals operator."""
+    return {"status": "approved"}
+
+
+@app.post("/task/return-tags")
+async def return_tags(payload: TaskPayload):
+    """Returns 200 with a tags string. Tests contains operator."""
+    return {"tags": "urgent,critical,review"}
+
+
+@app.post("/task/return-with-field")
+async def return_with_field(payload: TaskPayload):
+    """Returns 200 with approval_id present. Tests exists operator."""
+    return {"approval_id": "abc-123", "message": "approved"}
+
+
+@app.post("/task/return-no-error")
+async def return_no_error(payload: TaskPayload):
+    """Returns 200 without an error field. Tests not_exists operator."""
+    return {"message": "all clear"}
+
+
+@app.post("/task/return-422")
+async def return_422(payload: TaskPayload):
+    """Returns 422 with error body. Tests status_code_range 4xx operator."""
+    return JSONResponse(status_code=422, content={"error": "validation_failed"})
+
+
+@app.post("/task/return-pending")
+async def return_pending(payload: TaskPayload):
+    """Returns 200 with result=pending. Tests not_equals operator."""
+    return {"result": "pending"}
+
+
+@app.post("/task/return-500")
+async def return_500(payload: TaskPayload):
+    """Returns 500 with error body. Tests status_code_range 5xx with no matching condition (stay in state)."""
+    return JSONResponse(status_code=500, content={"error": "server_error"})
+
+
 @app.get("/health")
 async def health():
     """Health check."""

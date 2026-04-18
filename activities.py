@@ -22,7 +22,7 @@ METHODS_WITH_BODY = {HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH}
 
 @activity.defn
 async def execute_task_callback(input: TaskCallbackInput) -> TaskCallbackResult:
-    """Call the task callback URL using the configured HTTP method. Raises on non-2xx to trigger Temporal retry."""
+    """Call the task callback URL. Returns result for all HTTP responses; only network errors raise for Temporal retry."""
     body_data = TaskCallbackRequestBody(
         state_id=input.state_id,
         workflow_id=input.workflow_id,
@@ -59,17 +59,14 @@ async def execute_task_callback(input: TaskCallbackInput) -> TaskCallbackResult:
 
     log_ctx.status_code = response.status_code
 
-    if not response.is_success:
+    if response.is_success:
+        logger.info("Task callback succeeded", extra=log_ctx.model_dump(exclude_none=True))
+    else:
         log_ctx.body = response.text
         logger.warning("Task callback returned non-2xx status", extra=log_ctx.model_dump(exclude_none=True))
-        raise RuntimeError(
-            f"Task callback returned status {response.status_code}: {response.text}"
-        )
-
-    logger.info("Task callback succeeded", extra=log_ctx.model_dump(exclude_none=True))
 
     return TaskCallbackResult(
-        success=True,
+        success=response.is_success,
         status_code=response.status_code,
         body=response.text,
     )

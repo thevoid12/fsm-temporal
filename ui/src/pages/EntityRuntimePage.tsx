@@ -86,15 +86,6 @@ export default function EntityRuntimePage() {
     setEdges(newEdges);
   }, [setNodes, setEdges]);
 
-  const refreshState = useCallback(async (wfId: string) => {
-    const state = await api<CurrentState>("GET", `/workflows/${wfId}/state`);
-    const transitions = await api<AvailableTransition[]>("GET", `/workflows/${wfId}/transitions`);
-    const audit = await api<AuditEntry[]>("GET", `/workflows/${wfId}/audit`);
-    setCurrentState(state);
-    setAvailable(transitions);
-    setAuditTrail(audit);
-    return state;
-  }, []);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);

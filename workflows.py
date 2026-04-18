@@ -75,6 +75,8 @@ class FSMWorkflow:
             target_state = self._resolve_target_state(
                 transition.target_state, transition_id, task_result
             )
+            if target_state is None:
+                continue
             self._enter_state(target_state, transition_id=transition_id, task_result=task_result)
 
         result = FSMWorkflowResult(
@@ -135,8 +137,8 @@ class FSMWorkflow:
 
     def _resolve_target_state(
         self, default_target: str, transition_id: str, task_result: TaskCallbackResult | None
-    ) -> str:
-        """Check if an auto-transition overrides the default target based on the task result."""
+    ) -> str | None:
+        """Resolve target state based on task result. Returns None if workflow should stay in current state."""
         if not task_result:
             return default_target
 
@@ -144,6 +146,8 @@ class FSMWorkflow:
             task_body = json.loads(task_result.body)
         except (json.JSONDecodeError, TypeError):
             task_body = {}
+
+        task_body["status_code"] = task_result.status_code
 
         auto_transition = self._definition.find_auto_transition(
             self._current_state_id, task_result.success, task_body
@@ -155,6 +159,13 @@ class FSMWorkflow:
             )
             workflow.logger.info("Auto-transition override", extra=auto_log.model_dump())
             return auto_transition.target_state
+
+        if not task_result.success:
+            workflow.logger.warning(
+                "No matching condition for non-success task result, staying in current state",
+                extra={"state_id": self._current_state_id, "status_code": task_result.status_code},
+            )
+            return None
 
         return default_target
 

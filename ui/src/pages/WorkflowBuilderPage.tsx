@@ -15,7 +15,7 @@ import {
 import { api } from "../api/client";
 import type { WorkflowDetail, WorkflowImport, ValidationResult, UiMetadata } from "../types/workflow";
 import StateNode, { type StateNodeData } from "../components/StateNode";
-import ConfigPanel from "../components/ConfigPanel";
+import ConfigPanel, { type EdgeData } from "../components/ConfigPanel";
 
 const nodeTypes = { stateNode: StateNode };
 
@@ -76,7 +76,12 @@ export default function WorkflowBuilderPage() {
       source: t.source_state,
       target: t.target_state,
       label: t.display_label || t.unique_identifier,
-      data: { display_label: t.display_label || "", unique_identifier: t.unique_identifier },
+      data: {
+        display_label: t.display_label || "",
+        unique_identifier: t.unique_identifier,
+        auto_on_success: !!t.auto_on_success,
+        condition: t.condition || null,
+      },
       markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15 },
       style: { strokeWidth: 1.5 },
     }));
@@ -93,7 +98,7 @@ export default function WorkflowBuilderPage() {
           ...conn,
           id: edgeId,
           label: edgeId,
-          data: { unique_identifier: edgeId, display_label: "" },
+          data: { unique_identifier: edgeId, display_label: "", auto_on_success: false, condition: null },
           markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15 },
         },
         eds
@@ -137,12 +142,17 @@ export default function WorkflowBuilderPage() {
         retry_interval_seconds: d.retry_interval_seconds ?? 60,
       };
     }),
-    transitions: edges.map((e) => ({
-      unique_identifier: e.id,
-      display_label: (e.data as Record<string, string>)?.display_label || undefined,
-      source_state: e.source,
-      target_state: e.target,
-    })),
+    transitions: edges.map((e) => {
+      const data = (e.data as EdgeData) || {};
+      return {
+        unique_identifier: e.id,
+        display_label: data.display_label || undefined,
+        source_state: e.source,
+        target_state: e.target,
+        auto_on_success: data.auto_on_success || undefined,
+        condition: data.condition ?? undefined,
+      };
+    }),
   });
 
   const buildUiMetadata = (): UiMetadata => {
@@ -218,11 +228,13 @@ export default function WorkflowBuilderPage() {
     if (selectedNode?.id === nodeId) setSelectedNode((prev) => prev ? { ...prev, data: { ...prev.data, ...data } } : null);
   };
 
-  const updateEdgeData = (edgeId: string, data: { unique_identifier?: string; display_label?: string }) => {
+  const updateEdgeData = (edgeId: string, data: EdgeData) => {
     setEdges((eds) => eds.map((e) => {
       if (e.id !== edgeId) return e;
       const newId = data.unique_identifier || e.id;
-      return { ...e, id: newId, label: data.display_label || newId, data: { ...e.data, ...data } };
+      const currentData = (e.data as EdgeData) || {};
+      const newLabel = data.display_label ?? currentData.display_label ?? newId;
+      return { ...e, id: newId, label: newLabel || newId, data: { ...currentData, ...data } };
     }));
   };
 

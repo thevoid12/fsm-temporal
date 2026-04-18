@@ -1,11 +1,21 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { StateNodeData } from "./StateNode";
+import type { TransitionCondition } from "../types/workflow";
+import { CONDITION_OPERATORS } from "../types/workflow";
+
+export interface EdgeData {
+  unique_identifier?: string;
+  display_label?: string;
+  auto_on_success?: boolean;
+  condition?: TransitionCondition | null;
+  [key: string]: unknown;
+}
 
 interface Props {
   selectedNode: Node | null;
   selectedEdge: Edge | null;
   onUpdateNode: (id: string, data: Partial<StateNodeData>) => void;
-  onUpdateEdge: (id: string, data: { unique_identifier?: string; display_label?: string }) => void;
+  onUpdateEdge: (id: string, data: EdgeData) => void;
   onDeleteNode: (id: string) => void;
   onDeleteEdge: (id: string) => void;
 }
@@ -51,6 +61,11 @@ export default function ConfigPanel({ selectedNode, selectedEdge, onUpdateNode, 
   }
 
   if (selectedEdge) {
+    const edgeData = selectedEdge.data as Record<string, unknown> || {};
+    const condition = edgeData.condition as TransitionCondition | null | undefined;
+    const autoOnSuccess = !!edgeData.auto_on_success;
+    const needsValue = (op: string) => !["exists", "not_exists"].includes(op);
+
     return (
       <div className="p-4 space-y-3">
         <div className="flex justify-between items-center">
@@ -58,9 +73,45 @@ export default function ConfigPanel({ selectedNode, selectedEdge, onUpdateNode, 
           <button onClick={() => onDeleteEdge(selectedEdge.id)} className="text-[10px] text-red-500 hover:text-red-700">Delete</button>
         </div>
         <Field label="Identifier" value={selectedEdge.id} onChange={(v) => onUpdateEdge(selectedEdge.id, { unique_identifier: v })} />
-        <Field label="Display Label" value={(selectedEdge.data as Record<string, string>)?.display_label || ""} onChange={(v) => onUpdateEdge(selectedEdge.id, { display_label: v })} />
+        <Field label="Display Label" value={(edgeData.display_label as string) || ""} onChange={(v) => onUpdateEdge(selectedEdge.id, { display_label: v })} />
         <div className="text-[10px] text-slate-400">
           {selectedEdge.source} &rarr; {selectedEdge.target}
+        </div>
+
+        <div className="border-t border-slate-200 pt-3 mt-3">
+          <div className="text-[10px] text-slate-500 font-medium mb-2">Routing</div>
+          <Checkbox label="Auto on success" checked={autoOnSuccess} onChange={(v) => onUpdateEdge(selectedEdge.id, { auto_on_success: v })} />
+        </div>
+
+        <div className="border-t border-slate-200 pt-3 mt-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[10px] text-slate-500 font-medium">Condition</span>
+            {condition ? (
+              <button onClick={() => onUpdateEdge(selectedEdge.id, { condition: null })} className="text-[10px] text-red-500 hover:text-red-700">Remove</button>
+            ) : (
+              <button onClick={() => onUpdateEdge(selectedEdge.id, { condition: { field: "", operator: "equals", value: "" } })} className="text-[10px] text-blue-500 hover:text-blue-700">+ Add</button>
+            )}
+          </div>
+          {condition && (
+            <div className="space-y-2">
+              <Field label="Field" value={condition.field || ""} onChange={(v) => onUpdateEdge(selectedEdge.id, { condition: { ...condition, field: v } })} />
+              <div>
+                <label className="text-[10px] text-slate-500">Operator</label>
+                <select
+                  value={condition.operator || "equals"}
+                  onChange={(e) => onUpdateEdge(selectedEdge.id, { condition: { ...condition, operator: e.target.value } })}
+                  className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:border-blue-400 focus:outline-none"
+                >
+                  {CONDITION_OPERATORS.map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+              </div>
+              {needsValue(condition.operator) && (
+                <Field label="Value" value={condition.value || ""} onChange={(v) => onUpdateEdge(selectedEdge.id, { condition: { ...condition, value: v } })} />
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

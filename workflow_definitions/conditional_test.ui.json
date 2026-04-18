@@ -1,0 +1,12 @@
+{
+  "equals_check": { "x": 100, "y": 50 },
+  "contains_check": { "x": 400, "y": 50 },
+  "exists_check": { "x": 700, "y": 50 },
+  "not_exists_check": { "x": 100, "y": 250 },
+  "status_4xx_check": { "x": 400, "y": 250 },
+  "auto_success_check": { "x": 700, "y": 250 },
+  "not_equals_check": { "x": 100, "y": 450 },
+  "no_match_check": { "x": 400, "y": 450 },
+  "completed": { "x": 700, "y": 450 },
+  "failed": { "x": 700, "y": 600 }
+}

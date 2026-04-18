@@ -19,13 +19,28 @@ export interface StateDefinition {
 
 export type UiMetadata = Record<string, { x: number; y: number }>;
 
+export interface TransitionCondition {
+  field: string;
+  operator: string;
+  value?: string;
+}
+
+export const CONDITION_OPERATORS = [
+  "equals",
+  "not_equals",
+  "contains",
+  "exists",
+  "not_exists",
+  "status_code_range",
+] as const;
+
 export interface TransitionDefinition {
   unique_identifier: string;
   display_label?: string;
   source_state: string;
   target_state: string;
   auto_on_success?: boolean;
-  condition?: Record<string, unknown> | null;
+  condition?: TransitionCondition | null;
 }
 
 export interface WorkflowDetail {

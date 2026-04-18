@@ -1,0 +1,208 @@
+{
+  "name": "Conditional Transition Test",
+  "description": "Tests all conditional operators: equals, not_equals, contains, exists, not_exists, status_code_range, and auto_on_success",
+  "states": [
+    {
+      "unique_identifier": "equals_check",
+      "display_label": "Equals Check",
+      "description": "Task returns {status: approved}. Condition: status equals approved",
+      "is_start": true,
+      "task_callback_url": "http://localhost:9999/task/return-approved",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "contains_check",
+      "display_label": "Contains Check",
+      "description": "Task returns {tags: urgent,critical,review}. Condition: tags contains critical",
+      "task_callback_url": "http://localhost:9999/task/return-tags",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "exists_check",
+      "display_label": "Exists Check",
+      "description": "Task returns {approval_id: abc-123}. Condition: approval_id exists",
+      "task_callback_url": "http://localhost:9999/task/return-with-field",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "not_exists_check",
+      "display_label": "Not Exists Check",
+      "description": "Task returns {message: all clear} (no error field). Condition: error not_exists",
+      "task_callback_url": "http://localhost:9999/task/return-no-error",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "status_4xx_check",
+      "display_label": "Status 4xx Check",
+      "description": "Task returns 422. Condition: status_code status_code_range 4xx",
+      "task_callback_url": "http://localhost:9999/task/return-422",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "auto_success_check",
+      "display_label": "Auto Success Check",
+      "description": "Task returns 200. Transition: auto_on_success routes forward",
+      "task_callback_url": "http://localhost:9999/task/instant-success",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "not_equals_check",
+      "display_label": "Not Equals Check",
+      "description": "Task returns {result: pending}. Condition: result not_equals completed",
+      "task_callback_url": "http://localhost:9999/task/return-pending",
+      "task_timeout_minutes": 1,
+      "max_retries": 0,
+      "retry_interval_seconds": 5
+    },
+    {
+      "unique_identifier": "no_match_check",
+      "display_label": "Final Gate",
+      "description": "No task - manual transition to completed. All conditional checks have passed by this point."
+    },
+    {
+      "unique_identifier": "completed",
+      "display_label": "Completed",
+      "description": "All conditional checks passed",
+      "is_end": true
+    },
+    {
+      "unique_identifier": "failed",
+      "display_label": "Failed",
+      "description": "Condition did not match, routed here via manual fallback",
+      "is_end": true
+    }
+  ],
+  "transitions": [
+    {
+      "unique_identifier": "t_equals_auto",
+      "display_label": "equals: status=approved",
+      "source_state": "equals_check",
+      "target_state": "contains_check",
+      "condition": {
+        "field": "status",
+        "operator": "equals",
+        "value": "approved"
+      }
+    },
+    {
+      "unique_identifier": "t_equals_manual",
+      "display_label": "Trigger (equals)",
+      "source_state": "equals_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_contains_auto",
+      "display_label": "contains: tags has critical",
+      "source_state": "contains_check",
+      "target_state": "exists_check",
+      "condition": {
+        "field": "tags",
+        "operator": "contains",
+        "value": "critical"
+      }
+    },
+    {
+      "unique_identifier": "t_contains_manual",
+      "display_label": "Trigger (contains)",
+      "source_state": "contains_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_exists_auto",
+      "display_label": "exists: approval_id present",
+      "source_state": "exists_check",
+      "target_state": "not_exists_check",
+      "condition": {
+        "field": "approval_id",
+        "operator": "exists"
+      }
+    },
+    {
+      "unique_identifier": "t_exists_manual",
+      "display_label": "Trigger (exists)",
+      "source_state": "exists_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_not_exists_auto",
+      "display_label": "not_exists: error absent",
+      "source_state": "not_exists_check",
+      "target_state": "status_4xx_check",
+      "condition": {
+        "field": "error",
+        "operator": "not_exists"
+      }
+    },
+    {
+      "unique_identifier": "t_not_exists_manual",
+      "display_label": "Trigger (not_exists)",
+      "source_state": "not_exists_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_4xx_auto",
+      "display_label": "status_code_range: 4xx",
+      "source_state": "status_4xx_check",
+      "target_state": "auto_success_check",
+      "condition": {
+        "field": "status_code",
+        "operator": "status_code_range",
+        "value": "4xx"
+      }
+    },
+    {
+      "unique_identifier": "t_4xx_manual",
+      "display_label": "Trigger (4xx)",
+      "source_state": "status_4xx_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_auto_success",
+      "display_label": "auto_on_success: 2xx",
+      "source_state": "auto_success_check",
+      "target_state": "not_equals_check",
+      "auto_on_success": true
+    },
+    {
+      "unique_identifier": "t_auto_manual",
+      "display_label": "Trigger (auto)",
+      "source_state": "auto_success_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_not_equals_auto",
+      "display_label": "not_equals: result!=completed",
+      "source_state": "not_equals_check",
+      "target_state": "no_match_check",
+      "condition": {
+        "field": "result",
+        "operator": "not_equals",
+        "value": "completed"
+      }
+    },
+    {
+      "unique_identifier": "t_not_equals_manual",
+      "display_label": "Trigger (not_equals)",
+      "source_state": "not_equals_check",
+      "target_state": "failed"
+    },
+    {
+      "unique_identifier": "t_complete",
+      "display_label": "Complete",
+      "source_state": "no_match_check",
+      "target_state": "completed"
+    }
+  ]
+}

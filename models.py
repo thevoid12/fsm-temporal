@@ -40,6 +40,9 @@ class ConditionOperator(StrEnum):
     EQUALS = "equals"
     NOT_EQUALS = "not_equals"
     CONTAINS = "contains"
+    EXISTS = "exists"
+    NOT_EXISTS = "not_exists"
+    STATUS_CODE_RANGE = "status_code_range"
 
 
 # ==============================================================================
@@ -52,11 +55,24 @@ class TransitionCondition(BaseModel):
 
     field: str
     operator: ConditionOperator
-    value: str
+    value: str = ""
 
     def evaluate(self, task_result_body: dict) -> bool:
         """Check if the condition matches against the task result."""
         actual = task_result_body.get(self.field)
+
+        if self.operator == ConditionOperator.EXISTS:
+            return actual is not None
+        if self.operator == ConditionOperator.NOT_EXISTS:
+            return actual is None
+        if self.operator == ConditionOperator.STATUS_CODE_RANGE:
+            if actual is None:
+                return False
+            try:
+                return int(actual) // 100 == int(self.value[0])
+            except (ValueError, IndexError):
+                return False
+
         if actual is None:
             return False
         actual_str = str(actual)
