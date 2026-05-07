@@ -21,7 +21,7 @@
       "is_end": false,
       "task_callback_url": "http://localhost:9999/task/slow-success",
       "task_timeout_minutes": 5,
-      "max_retries": 0,
+      "max_retries": 1,
       "retry_interval_seconds": 10
     },
     {

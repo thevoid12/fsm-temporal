@@ -15,7 +15,9 @@ temporal ui is at localhost:8080 to view workflow activities and execution detai
 
 
 ## output:
+[demo video](https://drive.google.com/file/d/1hir-ADr2zoUaoskMU7SiYCw1hvO4OWeB/view?usp=sharing)
 ### custom ui:
+build your own custom ui
 ![output_1](./screenshots/sc_1.png)
 ### temporal event flow diagram:
 ![output_2](./screenshots/sc_2.png)
